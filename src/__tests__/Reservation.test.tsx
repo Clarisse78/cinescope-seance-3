@@ -42,4 +42,28 @@ describe("Les erreurs du formulaire", () => {
       "Saisissez une adresse électronique"
     );
   });
+
+  it("marque l’email invalide et donne le focus au résumé", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Réserver Après l’aube" }));
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+
+    expect(screen.getByRole("textbox", { name: /adresse électronique/i })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("group", { name: /3 erreurs/i })).toHaveFocus();
+  });
+
+  it("conserve la saisie et rejoint le champ depuis le résumé", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Réserver Après l’aube" }));
+    await user.type(screen.getByRole("textbox", { name: /nom de réservation/i }), "Zoé");
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+    await user.click(screen.getByRole("link", { name: /adresse électronique/i }));
+
+    expect(screen.getByRole("textbox", { name: /adresse électronique/i })).toHaveFocus();
+    expect(screen.getByRole("textbox", { name: /nom de réservation/i })).toHaveValue("Zoé");
+  });
 });

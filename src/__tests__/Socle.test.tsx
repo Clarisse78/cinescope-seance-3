@@ -11,6 +11,5 @@ describe("Socle conservé de la séance 2", () => {
     render(<App />); const opener=screen.getByRole("button", {name:"Réserver Orbite 9"}); fireEvent.click(opener);
     fireEvent.click(screen.getByRole("button", {name:"Revenir aux films"})); expect(opener).toHaveFocus();
   });
-  it.todo("Après correction : envoyer vide, vérifier aria-invalid et la description du champ email.");
-  it.todo("Après correction : vérifier que le résumé d’erreurs reçoit le focus.");
+
 });

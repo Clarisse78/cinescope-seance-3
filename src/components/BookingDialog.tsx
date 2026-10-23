@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import type { Film } from "../films";
 import { readReservation, type Errors, type Reservation } from "../reservation";
 
@@ -16,6 +16,20 @@ export default function BookingDialog({ film, onConfirm, onClose }: BookingDialo
   const id = (part: string) => `${prefix}-${part}`;
   const [errors, setErrors] = useState<Errors>({});
 
+  const [attempt, setAttempt] = useState(0);
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const errorList = Object.entries(errors) as [keyof Errors, string][];
+  const describedBy = (field: keyof Errors) =>
+    errors[field] ? `${id(field)}-help ${id(field)}-error` : `${id(field)}-help`;
+  const focusField = (event: MouseEvent<HTMLAnchorElement>, field: keyof Errors) => {
+    event.preventDefault();
+    document.getElementById(id(field))?.focus();
+  };
+
+  useEffect(() => {
+    if (attempt > 0 && errorList.length > 0) summaryRef.current?.focus();
+  }, [attempt, errors]);
+
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -31,6 +45,7 @@ export default function BookingDialog({ film, onConfirm, onClose }: BookingDialo
     if (!film.available || confirmedRef.current) return;
     const result = readReservation(event.currentTarget);
     setErrors(result.errors);
+    setAttempt((count) => count + 1);
     if (Object.keys(result.errors).length > 0) return;
     confirmedRef.current = true;
     onConfirm(film, result.values);
@@ -51,25 +66,43 @@ export default function BookingDialog({ film, onConfirm, onClose }: BookingDialo
         <>
           <p>Une place par réservation. Tous les champs du formulaire sont obligatoires.</p>
           <p className="demo-note">Démonstration : aucun billet réel ni envoi de courriel.</p>
-          {Object.keys(errors).length > 0 && <p className="field-error">Certains champs sont incorrects.</p>}
           <form noValidate onSubmit={submit}>
-            <div className="form-group">
-              <p className="field-label">Type de place</p>
+            {errorList.length > 0 && (
+              <div className="error-summary" ref={summaryRef} tabIndex={-1} role="group" aria-labelledby={id("summary-title")}>
+                <h3 id={id("summary-title")}>
+                  {errorList.length} {errorList.length > 1 ? "erreurs empêchent" : "erreur empêche"} la réservation
+                </h3>
+                <ul>
+                  {errorList.map(([field, message]) => (
+                    <li key={field}>
+                      <a href={`#${id(field)}`} onClick={(event) => focusField(event, field)}>{message}</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <fieldset className="form-group" aria-describedby={describedBy("tariff")}>
+              <legend>Type de place (obligatoire)</legend>
               <p className="field-help" id={id("tariff-help")}>Choisissez un type de place pour ce billet.</p>
               <div className="radio-options">
-                <span><input id={id("tariff-standard")} name="tariff" type="radio" value="standard" /> Standard</span>
-                <span><input id={id("tariff-student")} name="tariff" type="radio" value="student" /> Étudiant</span>
+                <label><input id={id("tariff")} name="tariff" type="radio" value="standard" required aria-invalid={errors.tariff ? true : undefined} /> Standard</label>
+                <label><input name="tariff" type="radio" value="student" required aria-invalid={errors.tariff ? true : undefined} /> Étudiant</label>
               </div>
-            </div>
+              {errors.tariff && <p className="field-error" id={id("tariff-error")}>{errors.tariff}</p>}
+            </fieldset>
             <div className="field">
-              <p className="field-label">Nom de réservation</p>
+              <label htmlFor={id("name")}>Nom de réservation (obligatoire)</label>
               <p className="field-help" id={id("name-help")}>Indiquez le nom de la personne qui réserve.</p>
-              <input id={id("name")} name="name" placeholder="Votre nom" className={errors.name ? "invalid" : undefined} />
+              <input id={id("name")} name="name" autoComplete="name" required
+                aria-invalid={errors.name ? true : undefined} aria-describedby={describedBy("name")} />
+              {errors.name && <p className="field-error" id={id("name-error")}>{errors.name}</p>}
             </div>
             <div className="field">
-              <p className="field-label">Adresse électronique</p>
+              <label htmlFor={id("email")}>Adresse électronique (obligatoire)</label>
               <p className="field-help" id={id("email-help")}>Format attendu : nom@exemple.fr.</p>
-              <input id={id("email")} name="email" type="email" placeholder="Votre adresse" className={errors.email ? "invalid" : undefined} />
+              <input id={id("email")} name="email" type="email" autoComplete="email" required
+                aria-invalid={errors.email ? true : undefined} aria-describedby={describedBy("email")} />
+              {errors.email && <p className="field-error" id={id("email-error")}>{errors.email}</p>}
             </div>
             <div className="dialog-actions">
               <button className="dialog-action" type="submit">Confirmer la réservation</button>
